@@ -273,7 +273,7 @@ class Board(Frame):
         self.log.append('  Year (mod 400): %d A.D.\n' % y)
         self.log.append('       Centuries: 5 * %d = %d\n' % (y100, y5))
         self.log.append('      Leap years: %d/4 = %d\n' % (y1, y4))
-        self.log.append('           Delta: (%d + %d +%d) (mod 7) = %d\n' % ( y1, y4, y5, delta ))
+        self.log.append('           Delta: (%d + %d + %d) (mod 7) = %d\n' % ( y1, y4, y5, delta ))
         self.log.append('  Doomsday = %s; Weekday = %s\n\n' % (days[(1+delta) % 7], days[weekday-1]))
         self.log.tag_add('error', where, 'end - 1c')
         self.log.configure(state='disabled')

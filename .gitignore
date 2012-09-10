@@ -1,4 +1,7 @@
 *.py[co]
+*.wpr
+*.ini
+*.log
 
 # Packages
 *.egg

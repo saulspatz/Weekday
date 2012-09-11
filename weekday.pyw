@@ -93,6 +93,16 @@ class Board(Frame):
         self.answer = Label(self, bg = 'black', fg = 'green', font=textFont, width = 25, height = 1)
         self.answer.grid(row = 2, column = 1, columnspan = 5, pady = 3)
 
+    def highlight(self, target, start, end, tag, color, font):
+        self.log.mark_set(INSERT, start)
+        while(True):
+            where = self.log.search(target, INSERT, end)
+            if not where: break
+            pastit = where + ('+%dc' % len(target))
+            self.log.tag_add(tag, where, pastit)
+            self.log.mark_set(INSERT, pastit)
+        self.log.tag_config(tag, font = font, foreground = color)
+
     def makeLog(self):
         logFrame = Frame(self.parent)
         textFont = Font(family = 'Helvetica', size = 11)
@@ -106,33 +116,10 @@ class Board(Frame):
         self.log.text.bind("<Control-Key-y>", self.editRedo)
         self.log.text.tag_configure('error', font = errorFont)
         self.log.editing = False
-        self.log.mark_set(INSERT, '1.0')
-        while(True):
-            target = 'Correct'
-            where = self.log.search(target, INSERT, END)
-            if not where: break
-            pastit = where + ('+%dc' % len(target))
-            self.log.tag_add('correct', where, pastit)
-            self.log.mark_set(INSERT, pastit)
-        self.log.tag_config('correct', font = boldFont, foreground = 'darkgreen')
-        self.log.mark_set(INSERT, '1.0')
-        while(True):
-            target = 'Incorrect'
-            where = self.log.search(target, INSERT, END)
-            if not where: break
-            pastit = where + ('+%dc' % len(target))
-            self.log.tag_add('incorrect', where, pastit)
-            self.log.mark_set(INSERT, pastit)
-        self.log.tag_config('incorrect',font = boldFont, foreground = 'red')
-        self.log.mark_set(INSERT, '1.0')
-        while(True):
-            target = 'Time Expired'
-            where = self.log.search(target, INSERT, END)
-            if not where: break
-            pastit = where + ('+%dc' % len(target))
-            self.log.tag_add('expired', where, pastit)
-            self.log.mark_set(INSERT, pastit)
-        self.log.tag_config('expired',font = boldFont, foreground = 'red')
+
+        self.highlight('Correct', '1.0', END, 'correct', 'darkgreen', boldFont)
+        self.highlight('Incorrect', '1.0', END, 'incorrect', 'red', boldFont)
+        self.highlight('Time Expired', '1.0', END, 'expired', 'red', boldFont)
 
         text = self.log.gettext()
         right = text.count('Correct')
@@ -165,11 +152,11 @@ class Board(Frame):
 
         buttonBar = Frame(logFrame, relief = FLAT, bd = 0)
         buttonBar.grid(row=1, column = 0, sticky=EW)
-        self.okayEditButton = Button(buttonBar, text = 'Okay',
+        self.okayEditButton = Button(buttonBar, text = 'Okay',relief = FLAT,
                                      command = self.editOkay)
-        self.editButton = Button(buttonBar, text = 'Edit Log',
+        self.editButton = Button(buttonBar, text = 'Edit Log', relief = FLAT,
                                  command =  self.edit)
-        self.cancelEditButton = Button(buttonBar, text = 'Cancel',
+        self.cancelEditButton = Button(buttonBar, text = 'Cancel',relief = FLAT,
                                        command =  self.editCancel)
         self.okayEditButton.grid(pady = 3, column = 0, row = 0, ipadx = 2)
         self.editButton.grid(pady = 3, column = 1, row = 0, ipadx = 2)
@@ -342,7 +329,11 @@ class Board(Frame):
             self.editCancel()
 
     def editCancel(self):
+        boldFont = Font(family = 'Helvetica', size = 11, weight = 'bold')
         self.log.settext(self.oldText)
+        self.highlight('Correct', '1.0', self.new, 'correct', 'darkgreen', boldFont)
+        self.highlight('Incorrect', '1.0', self.new, 'incorrect', 'red', boldFont)
+        self.highlight('Time Expired', '1.0', self.new, 'expired', 'red', boldFont)
         self.editOff()
 
     def editUndo(self, event):

@@ -45,8 +45,8 @@ class ScrolledText(Frame):
         self.text.see(END)
         self.text.focus()                                # save user a click
 
-    def gettext(self, mark='1.0'):                       # returns a string
-        return self.text.get(mark, END+'-1c')            # mark through last
+    def gettext(self, first='1.0', last = END+'-1c'):    # returns a string
+        return self.text.get(first, last)                # first through last
 
     def clear(self):
         self.text.delete('1.0', END)

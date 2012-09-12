@@ -43,6 +43,8 @@ class Board(Frame):
         self.makeQandA()
         self.makeButtons()
         self.makeLog()
+        self.session = SessionStats(self.parent)
+        self.session.grid(row = 3, column  = 0, sticky="ew")
 
         parent.wm_protocol("WM_DELETE_WINDOW", self.onClose)
         self.bind('<Map>', self.map)
@@ -235,15 +237,17 @@ class Board(Frame):
 
     def record(self, response, correct, weekday):
         text = self.dateString()
+        time = self.watch.read()
         text += ' ' + days[response-1] + ' '
         text += 'Correct; ' if correct else 'Incorrect; '
-        text += 'Time: ' + self.watch.read() +'\n'
+        text += 'Time: ' + time +'\n'
         self.log.configure(state='normal')
         self.log.append(text)
         self.log.configure(state='disabled')
         if not correct:
             self.explain()
-
+        time = 60*int(time[:-3]) + int(time[-2:])
+        self.session.update(correct, int(time), expired=False)
 
     def explain(self):
         self.log.configure(state='normal')
@@ -274,6 +278,7 @@ class Board(Frame):
         self.log.append(text)
         self.log.configure(state='disabled')
         self.explain()
+        self.session.update(correct=False, time=0, expired=True)
 
     def editOn(self):
         self.log.editing = True
@@ -394,7 +399,6 @@ class Board(Frame):
         dialog.resizable(False, False)
         self.alignPopup(dialog)
 
-
     def getTimeoutSettings(self):
         dialog = Toplevel()
         dialog.title("Time Limit")
@@ -402,6 +406,52 @@ class Board(Frame):
         settings.grid()
         dialog.resizable(False, False)
         self.alignPopup(dialog)
+
+class SessionStats(Frame):
+    def __init__(self, parent):
+        Frame.__init__(self, parent)
+        self.correct = StringVar()
+        self.incorrect = StringVar()
+        self.expired = StringVar()
+        self.average = StringVar()
+        self.totalTime = 0
+        c = LabelFrame(self, text = "Number Correct")
+        ce = Label(c, textvariable = self.correct)
+        ce.grid(sticky = "ew")
+        c.grid(row = 0, column = 0, sticky = "ew")
+        i = LabelFrame(self, text = "Number Incorrect")
+        ie = Label(i, textvariable = self.incorrect)
+        ie.grid(sticky = "ew")
+        i.grid(row = 0, column = 1, sticky = "ew")
+        t = LabelFrame(self, text = "Time Expired")
+        te = Label(t, textvariable = self.expired)
+        te.grid(sticky = "ew")
+        t.grid(row = 0, column = 2, sticky = "ew")
+        a = LabelFrame(self, text = "Average Time")
+        ae = Label(a, textvariable = self.average)
+        ae.grid(sticky = "ew")
+        a.grid(row = 0, column = 3, sticky = "ew")
+        self.columnconfigure("0 1 2 3", uniform = 'group1', weight = 1)
+
+        self.correct.set("0")
+        self.incorrect.set("0")
+        self.expired.set("0")
+
+    def update(self, correct, time, expired = False):
+        if not expired:
+            self.totalTime += time
+            right = int(self.correct.get())
+            wrong = int(self.incorrect.get())
+            right += correct
+            wrong += not correct
+            self.correct.set(str(right))
+            self.incorrect.set(str(wrong))
+            total = right + wrong
+            average = self.totalTime/(right+wrong)
+            self.average.set("%.2f" % average)
+        else:
+            expired = int(self.expired.get())
+            self.expired.set(str(expired+1))
 
 class ValidatedEntry(LabelFrame):
     # for validation documentation, see
@@ -458,6 +508,7 @@ class SetFrame(Frame):
 
         self.message = Label(self, text ='', fg = 'red')
         self.message.grid(row = 3, column = 0, columnspan = 2, sticky = 'news')
+        parent.wm_protocol("WM_DELETE_WINDOW", self.cancel)
 
     def getDate(self):
         try:

@@ -414,6 +414,7 @@ class SessionStats(Frame):
         self.incorrect = StringVar()
         self.expired = StringVar()
         self.average = StringVar()
+        self.streak = StringVar()
         self.totalTime = 0
         c = LabelFrame(self, text = "Number Correct")
         ce = Label(c, textvariable = self.correct)
@@ -431,27 +432,39 @@ class SessionStats(Frame):
         ae = Label(a, textvariable = self.average)
         ae.grid(sticky = "ew")
         a.grid(row = 0, column = 3, sticky = "ew")
-        self.columnconfigure("0 1 2 3", uniform = 'group1', weight = 1)
+        s = LabelFrame(self, text = "Streak")
+        se = Label(s, textvariable = self.streak)
+        se.grid(sticky = "ew")
+        s.grid(row = 0, column = 4, sticky = "ew")
+        self.columnconfigure("0 1 2 3 4", uniform = 'group1', weight = 1)
 
         self.correct.set("0")
         self.incorrect.set("0")
         self.expired.set("0")
+        self.streak.set("0")
 
     def update(self, correct, time, expired = False):
         if not expired:
             self.totalTime += time
             right = int(self.correct.get())
             wrong = int(self.incorrect.get())
-            right += correct
-            wrong += not correct
+            streak = int(self.streak.get())
+            if correct:
+                right += 1
+                streak += 1
+            else:
+                wrong += 1
+                streak = 0
             self.correct.set(str(right))
             self.incorrect.set(str(wrong))
+            self.streak.set(str(streak))
             total = right + wrong
             average = self.totalTime/(right+wrong)
             self.average.set("%.2f" % average)
         else:
             expired = int(self.expired.get())
             self.expired.set(str(expired+1))
+            self.streak.set("0")
 
 class ValidatedEntry(LabelFrame):
     # for validation documentation, see

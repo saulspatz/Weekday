@@ -62,6 +62,7 @@ class Board(Frame):
 
         menuBar.add_cascade(label="Help", menu = helpMenu)
         helpMenu.add_cascade(label="Algorithm", command=self.helpAlgorithm)
+        helpMenu.add_cascade(label="Mnemonics", command=self.helpMnemonics)
         helpMenu.add_command(label="About", command=self.about)
 
         menuBar.add_cascade(label="Settings", menu = settingsMenu)
@@ -250,21 +251,34 @@ class Board(Frame):
         self.session.update(correct, int(time), expired=False)
 
     def explain(self):
+        def odd(x):
+            return  (x & 1) == 1
+
         self.log.configure(state='normal')
         y = self.year % 400
         weekday = date(y, self.month, self.day).isoweekday()
         if y < 0: y += 400
         y100 = y // 100
         y1 = y % 100
-        y4 = y1 // 4
         y5 = 5*y100;
-        l = y4 + y1 + y5;
-        delta = l % 7
         where = self.log.index(INSERT)
         self.log.append('  Year (mod 400): %d A.D.\n' % y)
-        self.log.append('       Centuries: 5 * %d = %d\n' % (y100, y5))
-        self.log.append('      Leap years: %d/4 = %d\n' % (y1, y4))
-        self.log.append('           Delta: (%d + %d + %d) (mod 7) = %d\n' % ( y1, y4, y5, delta ))
+        self.log.append('    Centuries: 5 * %d = %d\n' % (y100, y5))
+        if odd(y1):
+            self.log.append("    %d is odd;  %d + 11 = %d\n" %(y1, y1, y1+11))
+            y1 += 11
+        self.log.append("    %d / 2 = %d\n" %(y1, y1/2))
+        y1 //= 2
+        if odd(y1):
+            self.log.append("    %d is odd;  %d + 11 = %d\n" %(y1, y1, y1+11))
+            y1 += 11
+        self.log.append("    %d (mod 7) = %d\n" %(y1, y1 % 7))
+        y1 = y1 % 7
+        if y1 != 0:
+            self.log.append("    7 - %d = %d\n" % (y1, 7 - y1))
+            y1 = 7 - y1
+        delta = (y1 + y5) % 7
+        self.log.append('    (%d + %d) (mod 7) = %d\n' % ( y1, y5, delta ))
         self.log.append('  Doomsday = %s; Weekday = %s\n\n' % (days[(1+delta) % 7], days[weekday-1]))
         self.log.tag_add('error', where, 'end - 1c')
         self.log.configure(state='disabled')
@@ -378,7 +392,7 @@ class Board(Frame):
         from help import algorithmText
         helpFont = Font(family = 'Helevetica', size = '12')
         win = Toplevel()
-        win.title('Weekday Help')
+        win.title('Weekday Algorithm Help')
         text = ScrolledText(win, wrap= WORD)
         text.configure(font = helpFont)
         text.append(algorithmText)
@@ -387,6 +401,21 @@ class Board(Frame):
         text.pack(expand=YES, fill = BOTH)
         ok.pack()
         text.see('1.0')
+
+    def helpMnemonics(self):
+        from help import mnemonicText
+        helpFont = Font(family = 'Helevetica', size = '12')
+        win = Toplevel()
+        win.title('Weekday Mnemonics Help')
+        text = ScrolledText(win, wrap= WORD)
+        text.configure(font = helpFont)
+        text.append(mnemonicText)
+        text.configure(state=DISABLED)
+        ok = Button(win, text='Okay', command = win.destroy)
+        text.pack(expand=YES, fill = BOTH)
+        ok.pack()
+        text.see('1.0')
+
 
     def about(self):
         showinfo("Notice","The author has placed this code in the public domain.")

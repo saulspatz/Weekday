@@ -36,6 +36,7 @@ class Board(Frame):
             self.minyear = -99999
             self.maxyear = 99999
             self.timeout = 0
+            self.explain = self.explainOddPlus11
 
         self.watch = StopWatch(self, self.timeout)
         self.watch.grid(row=0, column = 2, columnspan = 3, pady = 3)
@@ -68,6 +69,7 @@ class Board(Frame):
         menuBar.add_cascade(label="Settings", menu = settingsMenu)
         settingsMenu.add_cascade(label="Year", command=self.getYearSettings)
         settingsMenu.add_command(label="Timeout", command=self.getTimeoutSettings)
+        settingsMenu.add_command(label="Algorithm", command=self.getAlgorithmSettings)
 
     def makeButtons(self):
         buttonBar = Frame(self, relief = SUNKEN, bd = 2)
@@ -250,7 +252,7 @@ class Board(Frame):
         time = 60*int(time[:-3]) + int(time[-2:])
         self.session.update(correct, int(time), expired=False)
 
-    def explain(self):
+    def explainOddPlus11(self):
         def odd(x):
             return  (x & 1) == 1
 
@@ -279,6 +281,26 @@ class Board(Frame):
             y1 = 7 - y1
         delta = (y1 + y5) % 7
         self.log.append('    (%d + %d) (mod 7) = %d\n' % ( y1, y5, delta ))
+        self.log.append('  Doomsday = %s; Weekday = %s\n\n' % (days[(1+delta) % 7], days[weekday-1]))
+        self.log.tag_add('error', where, 'end - 1c')
+        self.log.configure(state='disabled')
+
+    def explainLeapYears(self):
+        self.log.configure(state='normal')
+        y = self.year % 400
+        weekday = date(y, self.month, self.day).isoweekday()
+        if y < 0: y += 400
+        y100 = y // 100
+        y1 = y % 100
+        y4 = y1 // 4
+        y5 = 5*y100;
+        l = y4 + y1 + y5;
+        delta = l % 7
+        where = self.log.index(INSERT)
+        self.log.append('  Year (mod 400): %d A.D.\n' % y)
+        self.log.append('       Centuries: 5 * %d = %d\n' % (y100, y5))
+        self.log.append('      Leap years: %d/4 = %d\n' % (y1, y4))
+        self.log.append('           Delta: (%d + %d + %d) (mod 7) = %d\n' % ( y1, y4, y5, delta ))
         self.log.append('  Doomsday = %s; Weekday = %s\n\n' % (days[(1+delta) % 7], days[weekday-1]))
         self.log.tag_add('error', where, 'end - 1c')
         self.log.configure(state='disabled')
@@ -376,6 +398,7 @@ class Board(Frame):
             fout.write('self.minyear = %d\n' %self.minyear)
             fout.write('self.maxyear = %d\n' % self.maxyear)
             fout.write('self.timeout = %d\n' %self.timeout)
+            fout.write('self.explain = %s\n' %('self.'+self.explain.__name__))
         self.parent.destroy()
 
     def map(self, event):
@@ -389,13 +412,17 @@ class Board(Frame):
             timer.pause()
 
     def helpAlgorithm(self):
-        from help import algorithmText
+        import help
+        text = self.explain.__name__[7:] + 'Text'    # drop initial "explain"
+
+        exec("self.algorithmText = help.%s" % text)
+
         helpFont = Font(family = 'Helevetica', size = '12')
         win = Toplevel()
         win.title('Weekday Algorithm Help')
         text = ScrolledText(win, wrap= WORD)
         text.configure(font = helpFont)
-        text.append(algorithmText)
+        text.append(self.algorithmText)
         text.configure(state=DISABLED)
         ok = Button(win, text='Okay', command = win.destroy)
         text.pack(expand=YES, fill = BOTH)
@@ -435,6 +462,15 @@ class Board(Frame):
         settings.grid()
         dialog.resizable(False, False)
         self.alignPopup(dialog)
+
+    def getAlgorithmSettings(self):
+        dialog = Toplevel()
+        dialog.title("Algorithm")
+        settings = AlgorithmDialog(dialog, self)
+        settings.grid()
+        dialog.resizable(False, False)
+        self.alignPopup(dialog)
+
 
 class SessionStats(Frame):
     def __init__(self, parent):
@@ -652,7 +688,8 @@ class TimeoutDialog(Frame):
         Frame.__init__(self, parent)
         timevar = StringVar()
         timevar.set(str(board.timeout))
-        timeEntry = ValidatedEntry(self, 'Seconds', '0123456789', textvariable=timevar, width = 6)
+        timeEntry = ValidatedEntry(self, 'Seconds', '0123456789',
+                                   textvariable=timevar, width = 6)
         l = Label(self, text = '0 = No Limit')
         l.grid(row = 0, column = 1, pady = 2, padx = 4)
         timeEntry.grid(row = 0, column = 0, pady = 2, padx = 4)
@@ -670,6 +707,34 @@ class TimeoutDialog(Frame):
     def okay(self):
         self.board.timeout = int(self.time.get())
         self.board.watch.setLimit(self.board.timeout)
+        self.winfo_toplevel().destroy()
+
+class AlgorithmDialog(Frame):
+    def __init__(self, parent, board):
+        Frame.__init__(self, parent)
+        self.algovar = StringVar()
+        self.algovar.set(board.explain.__name__)
+        odd = Radiobutton(self, text = 'Odd Plus 11 Algorithm',
+                          variable = self.algovar,
+                          value = 'explainOddPlus11')
+        leap = Radiobutton(self, text = 'Leap Years Algorithm',
+                          variable = self.algovar,
+                          value = 'explainLeapYears')
+        odd.grid(row = 0, column = 0, columnspan = 2, pady = 2, padx = 4)
+        leap.grid(row = 1, column = 0, columnspan = 2, pady = 2, padx = 4)
+        ok = Button(self, text = "Okay", command = self.okay)
+        ok.grid(row = 2, column = 0, padx = 3, pady = 2)
+        cancel = Button(self, text = "Cancel", command = self.cancel)
+        cancel.grid(row = 2, column = 1, padx = 3, pady = 2)
+        self.board = board
+        self.focus_set()
+
+    def cancel(self):
+        self.winfo_toplevel().destroy()
+
+    def okay(self):
+        temp = 'self.board.' + self.algovar.get()
+        exec("self.board.explain = %s" % temp)
         self.winfo_toplevel().destroy()
 
 if __name__ == '__main__':
